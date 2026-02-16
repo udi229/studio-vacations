@@ -48,7 +48,7 @@
 
   /* Register card */
   .register-card {
-    background: rgba(255,255,255,0.96);
+    background: rgba(255,255,255,0.85);
     backdrop-filter: blur(28px);
     border: 1px solid rgba(255,107,0,0.2);
     border-radius: 20px;
@@ -56,6 +56,16 @@
     width: 420px; max-width: 94vw; max-height: 92vh;
     overflow-y: auto; position: relative; z-index: 10;
     box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+  }
+  /* Cocktail decoration inside card */
+  .register-card::before {
+    content: '🍹';
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 42px;
+    opacity: 0.15;
+    pointer-events: none;
   }
   .register-card::-webkit-scrollbar { width: 3px; }
   .register-card::-webkit-scrollbar-thumb { background: rgba(255,107,0,0.3); border-radius: 2px; }
@@ -808,6 +818,44 @@ async function submitRequest(){
   renderMyRequests();checkNotifications();
   // Admin notification badge
   showAdminAlert(req.name, req.start, req.end);
+  // Send email notification
+  sendEmailNotification(req);
+}
+
+function sendEmailNotification(req){
+  // IMPORTANT: Email sending requires external service configuration
+  // Option 1: Use EmailJS (free) - https://www.emailjs.com/
+  // Option 2: Use server-side endpoint with Nodemailer/SendGrid
+  // For now, we'll show a browser notification as fallback
+  
+  const adminEmail = 'admin@example.com'; // <-- הכנס כאן את המייל של המנהל
+  const subject = `בקשת חופשה חדשה מ-${req.name}`;
+  const body = `שלום,\n\nהתקבלה בקשת חופשה חדשה:\n\nשם: ${req.name}\nמחלקה: ${req.dept}\nתאריכים: ${fmt(req.start)} - ${fmt(req.end)}\nסיבה: ${req.reason}\n\nכנס לאתר לאישור: ${window.location.href}`;
+  
+  // Try browser notification first
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('בקשת חופשה חדשה', {
+      body: `${req.name} ביקש חופשה: ${fmt(req.start)} - ${fmt(req.end)}`,
+      icon: '🎬'
+    });
+  } else if ('Notification' in window && Notification.permission !== 'denied') {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        new Notification('בקשת חופשה חדשה', {
+          body: `${req.name} ביקש חופשה: ${fmt(req.start)} - ${fmt(req.end)}`
+        });
+      }
+    });
+  }
+  
+  // Fallback: Open mailto link (will open user's email client)
+  // Uncomment below to enable:
+  // const mailtoLink = `mailto:${adminEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  // window.open(mailtoLink, '_blank');
+  
+  console.log('📧 Email notification would be sent to:', adminEmail);
+  console.log('Subject:', subject);
+  console.log('Body:', body);
 }
 
 function renderMyRequests(){
