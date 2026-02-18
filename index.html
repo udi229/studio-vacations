@@ -1013,17 +1013,19 @@ function renderCal(cid,year,month,reqs){
       ev.textContent=firstName;
       ev.title=`${r.name} — ${fmt(r.start)} עד ${fmt(r.end)}`;
       ev.onclick=()=>showEvt(r);
-      // Unique striped pattern for each user on top of status color
+      ev.style.position='relative';
+      // Unique colored dot for each user
       const userColors = [
-        'rgba(255,20,147,0.4)', 'rgba(0,206,209,0.4)', 'rgba(255,69,0,0.4)', 'rgba(147,112,219,0.4)', 
-        'rgba(50,205,50,0.4)', 'rgba(255,105,180,0.4)', 'rgba(30,144,255,0.4)', 'rgba(255,215,0,0.4)',
-        'rgba(255,99,71,0.4)', 'rgba(32,178,170,0.4)', 'rgba(186,85,211,0.4)', 'rgba(0,250,154,0.4)',
-        'rgba(255,165,0,0.4)', 'rgba(138,43,226,0.4)', 'rgba(0,191,255,0.4)', 'rgba(255,140,0,0.4)',
-        'rgba(72,209,204,0.4)', 'rgba(218,112,214,0.4)', 'rgba(127,255,0,0.4)', 'rgba(220,20,60,0.4)'
+        '#FF1493', '#00CED1', '#FF4500', '#9370DB', '#32CD32',
+        '#FF69B4', '#1E90FF', '#FFD700', '#FF6347', '#20B2AA',
+        '#BA55D3', '#00FA9A', '#FFA500', '#8A2BE2', '#00BFFF',
+        '#FF8C00', '#48D1CC', '#DA70D6', '#7FFF00', '#DC143C'
       ];
       const userHash = r.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       const userColor = userColors[userHash % userColors.length];
-      ev.style.backgroundImage = `repeating-linear-gradient(45deg, transparent, transparent 4px, ${userColor} 4px, ${userColor} 8px)`;
+      const dot = document.createElement('span');
+      dot.style.cssText = `position:absolute;top:1px;left:2px;width:5px;height:5px;border-radius:50%;background:${userColor};box-shadow:0 0 2px rgba(0,0,0,0.3);`;
+      ev.appendChild(dot);
       de.appendChild(ev);
     });
     if(dr.length>3){const m=document.createElement('div');m.style.cssText='font-size:9px;color:var(--orange);font-weight:700;padding:1px 3px';m.textContent=`+${dr.length-3}`;de.appendChild(m);}
