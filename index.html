@@ -220,10 +220,12 @@
   .admin-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
   @media(max-width:800px) { .admin-grid { grid-template-columns:1fr 1fr; } .form-row { grid-template-columns:1fr; } }
   
-  /* Star of David pulse animation */
-  @keyframes star-pulse {
-    0%, 100% { opacity: 0.12; transform: translate(-50%, -50%) scale(1); }
-    50% { opacity: 0.18; transform: translate(-50%, -50%) scale(1.05); }
+  /* Star of David wave animation (like a flag) */
+  @keyframes star-wave {
+    0%, 100% { transform: translate(-50%, -50%) rotate(-3deg) scale(1); }
+    25% { transform: translate(-50%, -50%) rotate(3deg) scale(1.02); }
+    50% { transform: translate(-50%, -50%) rotate(-3deg) scale(1); }
+    75% { transform: translate(-50%, -50%) rotate(3deg) scale(0.98); }
   }
   
   /* Font size control */
@@ -425,9 +427,8 @@
     <button class="app-tab" id="tab-viewer-btn" style="display:none" data-tab="tab-viewer-cal" onclick="showTab('tab-viewer-cal',this)">👁 צפייה כללית</button>
     <div class="font-size-control">
       <label>גודל טקסט:</label>
-      <button class="font-size-btn" onclick="setFontSize('small')">קטן</button>
-      <button class="font-size-btn active" onclick="setFontSize('medium')">בינוני</button>
-      <button class="font-size-btn" onclick="setFontSize('large')">גדול</button>
+      <input type="range" min="1" max="3" value="2" id="font-slider" oninput="setFontSize(this.value)" style="width:80px;cursor:pointer;accent-color:var(--orange);">
+      <span id="font-label" style="font-size:11px;color:var(--text-light);min-width:45px;">בינוני</span>
     </div>
   </div>
   <div class="tab-panels">
@@ -800,24 +801,27 @@ async function enterApp(adminMode=false,viewerMode=false){
     renderDeptCalendar();
   }
   // Load saved font size preference
-  const savedSize = localStorage.getItem('fontSize') || 'medium';
-  const appContent = document.querySelector('.app-content');
-  appContent.classList.add('font-' + savedSize);
-  document.querySelectorAll('.font-size-btn').forEach(btn => {
-    if(btn.textContent === (savedSize==='small'?'קטן':savedSize==='large'?'גדול':'בינוני')) btn.classList.add('active');
-    else btn.classList.remove('active');
-  });
+  const savedVal = localStorage.getItem('fontSize') || '2';
+  const slider = document.getElementById('font-slider');
+  if(slider) slider.value = savedVal;
+  setFontSize(savedVal);
 }
 
-function setFontSize(size){
+function setFontSize(val){
+  const sizes = {1:'small', 2:'medium', 3:'large'};
+  const labels = {1:'קטן', 2:'בינוני', 3:'גדול'};
+  const size = sizes[val] || 'medium';
+  
   const appContent = document.querySelector('.app-content');
   appContent.classList.remove('font-small', 'font-medium', 'font-large');
   appContent.classList.add('font-' + size);
-  // Update button states
-  document.querySelectorAll('.font-size-btn').forEach(btn => btn.classList.remove('active'));
-  event.target.classList.add('active');
+  
+  // Update label
+  const label = document.getElementById('font-label');
+  if(label) label.textContent = labels[val] || 'בינוני';
+  
   // Save preference
-  localStorage.setItem('fontSize', size);
+  localStorage.setItem('fontSize', val);
 }
 
 function showTab(tabId,btn){
@@ -1050,15 +1054,16 @@ function renderCal(cid,year,month,reqs){
     if(hol){
       de.style.border='2px solid #0038b8';
       de.style.position='relative';
-      // Add animated transparent Star of David overlay
+      de.style.overflow='visible';
+      // Add waving Star of David in background
       const star=document.createElement('div');
       star.innerHTML='✡';
-      star.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:60px;color:rgba(0,56,184,0.12);pointer-events:none;z-index:0;animation:star-pulse 3s ease-in-out infinite;';
+      star.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:65px;color:rgba(0,56,184,0.12);pointer-events:none;z-index:0;animation:star-wave 3s ease-in-out infinite;';
       de.appendChild(star);
     }
     const ne=document.createElement('div');ne.className='cal-day-num';ne.textContent=d;ne.style.position='relative';ne.style.zIndex='1';de.appendChild(ne);
-    // Holiday label
-    if(hol){const hl=document.createElement('div');hl.style.cssText='font-size:8px;color:#0038b8;font-weight:700;padding:0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:relative;z-index:1;';hl.textContent='✡ '+hol;de.appendChild(hl);}
+    // Holiday label - only once, at top
+    if(hol){const hl=document.createElement('div');hl.style.cssText='font-size:8px;color:#0038b8;font-weight:800;padding:2px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:relative;z-index:3;background:rgba(255,255,255,0.9);border-radius:3px;margin-bottom:2px;';hl.textContent='✡ '+hol;de.appendChild(hl);}
     const dr=reqs.filter(r=>ds>=r.start&&ds<=r.end&&r.status!=='rejected');
     // Create a container for events in 2 columns
     const evContainer = document.createElement('div');
