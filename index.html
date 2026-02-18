@@ -1013,10 +1013,16 @@ function renderCal(cid,year,month,reqs){
       ev.textContent=firstName;
       ev.title=`${r.name} — ${fmt(r.start)} עד ${fmt(r.end)}`;
       ev.onclick=()=>showEvt(r);
-      // Add stripes to every other event when multiple people on same day
-      if(dr.length > 1 && index % 2 === 1){
-        ev.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.3) 3px, rgba(255,255,255,0.3) 6px)';
-      }
+      // Unique color border for each user based on their name
+      const userColors = [
+        '#FF1493', '#00CED1', '#FF4500', '#9370DB', '#32CD32',
+        '#FF69B4', '#1E90FF', '#FFD700', '#FF6347', '#20B2AA',
+        '#BA55D3', '#00FA9A', '#FFA500', '#8A2BE2', '#00BFFF',
+        '#FF8C00', '#48D1CC', '#DA70D6', '#7FFF00', '#DC143C'
+      ];
+      const userHash = r.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const userColor = userColors[userHash % userColors.length];
+      ev.style.borderRight = `4px solid ${userColor}`;
       de.appendChild(ev);
     });
     if(dr.length>3){const m=document.createElement('div');m.style.cssText='font-size:9px;color:var(--orange);font-weight:700;padding:1px 3px';m.textContent=`+${dr.length-3}`;de.appendChild(m);}
