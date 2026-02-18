@@ -1013,7 +1013,10 @@ function renderCal(cid,year,month,reqs){
     // Holiday label
     if(hol){const hl=document.createElement('div');hl.style.cssText='font-size:8px;color:#0038b8;font-weight:700;padding:0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:relative;z-index:1;';hl.textContent='✡ '+hol;de.appendChild(hl);}
     const dr=reqs.filter(r=>ds>=r.start&&ds<=r.end&&r.status!=='rejected');
-    dr.slice(0,3).forEach((r, index)=>{
+    // Create a container for events in 2 columns
+    const evContainer = document.createElement('div');
+    evContainer.style.cssText='display:flex;flex-wrap:wrap;gap:2px;justify-content:space-between;position:relative;z-index:2;';
+    dr.slice(0,6).forEach((r, index)=>{
       const ev=document.createElement('div');
       ev.className=`cal-event ${r.status}`;
       // Show only first name to save space
@@ -1023,6 +1026,7 @@ function renderCal(cid,year,month,reqs){
       ev.onclick=()=>showEvt(r);
       ev.style.position='relative';
       ev.style.zIndex='2';
+      ev.style.flex='0 0 48%';
       // Add red warning dot if there's overlap (multiple people on same day)
       if(dr.length > 1){
         const dot = document.createElement('span');
@@ -1030,9 +1034,18 @@ function renderCal(cid,year,month,reqs){
         dot.title = `⚠️ חפיפה: ${dr.length} עובדים באותו תאריך`;
         ev.appendChild(dot);
       }
-      de.appendChild(ev);
+      evContainer.appendChild(ev);
     });
-    if(dr.length>3){const m=document.createElement('div');m.style.cssText='font-size:9px;color:var(--orange);font-weight:700;padding:1px 3px';m.textContent=`+${dr.length-3}`;de.appendChild(m);}
+    de.appendChild(evContainer);
+    // Show "+X more" that opens modal with all names
+    if(dr.length>6){
+      const m=document.createElement('div');
+      m.style.cssText='font-size:9px;color:var(--orange);font-weight:700;padding:2px 4px;cursor:pointer;background:rgba(255,107,0,0.1);border-radius:3px;display:inline-block;margin-top:2px;position:relative;z-index:2;';
+      m.textContent=`+${dr.length-6} נוספים`;
+      m.onclick=()=>showDayDetails(ds, dr);
+      m.title='לחץ לראות את כל העובדים';
+      de.appendChild(m);
+    }
     c.appendChild(de);
   }
 }
@@ -1042,6 +1055,29 @@ function renderAdminCalendar(){document.getElementById('admin-cal-month-display'
 function changeAdminMonth(d){adminCalMonth+=d;if(adminCalMonth<0){adminCalMonth=11;adminCalYear--;}if(adminCalMonth>11){adminCalMonth=0;adminCalYear++;}renderAdminCalendar();}
 function renderViewerCalendar(){document.getElementById('viewer-cal-month-display').textContent=`${MH[viewerCalMonth]} ${viewerCalYear}`;const f=document.getElementById('viewer-cal-filter').value;renderCal('viewer-calendar',viewerCalYear,viewerCalMonth,f==='all'?DB.requests:DB.requests.filter(r=>r.dept===f));}
 function changeViewerMonth(d){viewerCalMonth+=d;if(viewerCalMonth<0){viewerCalMonth=11;viewerCalYear--;}if(viewerCalMonth>11){viewerCalMonth=0;viewerCalYear++;}renderViewerCalendar();}
+
+function showDayDetails(date, requests){
+  const sm={pending:['⏳','ממתין','pending'],approved:['✅','אושרה','approved']};
+  const content = `
+    <div style="max-height:400px;overflow-y:auto">
+      <h3 style="margin:0 0 12px 0;color:var(--dark);font-size:16px">📅 ${fmt(date)} — ${requests.length} עובדים</h3>
+      ${requests.map(r=>{
+        const[si,sl,sc]=sm[r.status]||sm.pending;
+        return`<div style="background:white;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;" onclick="showEvt({id:'${r.id}',name:'${r.name}',dept:'${r.dept}',start:'${r.start}',end:'${r.end}',reason:\`${r.reason}\`,status:'${r.status}',recommendation:'${r.recommendation||''}'})">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <strong style="font-size:14px">👤 ${r.name}</strong>
+            <span class="status-badge ${sc}" style="font-size:11px">${si} ${sl}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-light)">
+            🏢 ${r.dept} &nbsp;|&nbsp; 📅 ${fmt(r.start)} — ${fmt(r.end)}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+  document.getElementById('event-modal-content').innerHTML=content;
+  document.getElementById('event-modal').classList.add('open');
+}
 
 function showEvt(req){
   const sm={pending:['⏳','ממתין','pending'],approved:['✅','אושרה','approved'],rejected:['❌','נדחתה','rejected']};
