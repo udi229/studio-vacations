@@ -618,18 +618,21 @@ function sendDecisionEmail(req, action) {
     recSection = `\n\n${req.recommendedBy}:\n${req.recommendationReason}`;
   }
   
-  // Find department representative email
-  const repId = DB.deptReps ? DB.deptReps[req.dept] : null;
-  const rep = repId && DB.users ? DB.users.find(u=>u.id===repId) : null;
-  const repEmail = rep ? rep.email : '';
-  
-  console.log('📧 Sending email:', {
-    to: req.email,
-    cc: repEmail,
-    dept: req.dept,
-    repId: repId,
-    repName: rep ? rep.name : 'לא נמצא'
-  });
+  // Find department representative email - using global DB
+  let repEmail = '';
+  try {
+    if(DB && DB.deptReps && DB.users) {
+      const repId = DB.deptReps[req.dept];
+      if(repId) {
+        const rep = DB.users.find(u => u.id === repId);
+        if(rep && rep.email) {
+          repEmail = rep.email;
+        }
+      }
+    }
+  } catch(e) {
+    console.error('Error finding rep email:', e);
+  }
   
   const subject = action==='approved'
     ? `✅ בקשת החופשה שלך אושרה — ${fmt(req.start)} עד ${fmt(req.end)}`
@@ -1235,10 +1238,10 @@ function renderReqTable(){
     const rec=r.recommendation?rm[r.recommendation]:null;
     const recWithReason = rec ? `<span class="status-badge ${rec[2]}" ${r.recommendationReason?`title="סיבה: ${r.recommendationReason}" style="cursor:help;"`:''}>${rec[0]} ${rec[1]}${r.recommendationReason?' 💬':''}</span>` : '<span style="color:var(--text-light);font-size:12px">—</span>';
     
-    // Always show approve/reject/delete buttons, regardless of current status
+    // Always show all buttons - admin can change status anytime
     const acts = `
-      <button class="action-btn btn-approve" onclick="adminAction('${r.id}','approved')" ${r.status==='approved'?'disabled style="opacity:0.5"':''}>✅</button>
-      <button class="action-btn btn-reject" onclick="adminAction('${r.id}','rejected')" ${r.status==='rejected'?'disabled style="opacity:0.5"':''}>❌</button>
+      <button class="action-btn btn-approve" onclick="adminAction('${r.id}','approved')">✅</button>
+      <button class="action-btn btn-reject" onclick="adminAction('${r.id}','rejected')">❌</button>
       <button class="action-btn" style="background:#fee;color:#c00;border:1px solid #fcc" onclick="adminDeleteRequest('${r.id}')">🗑️</button>
     `;
     
