@@ -618,20 +618,37 @@ function sendDecisionEmail(req, action) {
     recSection = `\n\n${req.recommendedBy}:\n${req.recommendationReason}`;
   }
   
-  // Find department representative email - using global DB
-  let repEmail = '';
+  // Build CC list: department rep + Efrat
+  let ccEmails = [];
+  
+  // Find department representative email
   try {
     if(DB && DB.deptReps && DB.users) {
       const repId = DB.deptReps[req.dept];
       if(repId) {
         const rep = DB.users.find(u => u.id === repId);
         if(rep && rep.email) {
-          repEmail = rep.email;
+          ccEmails.push(rep.email);
         }
       }
     }
   } catch(e) {
     console.error('Error finding rep email:', e);
+  }
+  
+  // Always add Efrat to CC
+  try {
+    if(DB && DB.users) {
+      const efrat = DB.users.find(u => u.name && u.name.includes('אפרת'));
+      if(efrat && efrat.email) {
+        // Add only if not already in list
+        if(!ccEmails.includes(efrat.email)) {
+          ccEmails.push(efrat.email);
+        }
+      }
+    }
+  } catch(e) {
+    console.error('Error finding Efrat email:', e);
   }
   
   const subject = action==='approved'
@@ -641,10 +658,11 @@ function sendDecisionEmail(req, action) {
     ? `שלום ${req.name},\n\nשמחים לעדכן אותך כי בקשת החופשה שלך אושרה.\n\nפרטי הבקשה:\n• מחלקה: ${req.dept}\n• תאריך התחלה: ${fmt(req.start)}\n• תאריך סיום: ${fmt(req.end)}\n• סיבה: ${req.reason}${recSection}\n\nחופשה נעימה!\nצוות האולפן 🎬`
     : `שלום ${req.name},\n\nלצערנו, בקשת החופשה שלך נדחתה.\n\nפרטי הבקשה:\n• מחלקה: ${req.dept}\n• תאריך התחלה: ${fmt(req.start)}\n• תאריך סיום: ${fmt(req.end)}\n• סיבה: ${req.reason}${recSection}\n\nלשאלות ופניות — פנה/י למנהל הישיר.\nצוות האולפן 🎬`;
   
-  // Build Outlook URL with CC if rep exists
+  // Build Outlook URL with CC
   let outlookUrl = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(req.email)}`;
-  if(repEmail) {
-    outlookUrl += `&cc=${encodeURIComponent(repEmail)}`;
+  if(ccEmails.length > 0) {
+    // Join multiple CC emails with semicolon
+    outlookUrl += `&cc=${encodeURIComponent(ccEmails.join(';'))}`;
   }
   outlookUrl += `&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   
