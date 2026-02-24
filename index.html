@@ -619,9 +619,17 @@ function sendDecisionEmail(req, action) {
   }
   
   // Find department representative email
-  const repId = DB.deptReps[req.dept];
-  const rep = repId ? DB.users.find(u=>u.id===repId) : null;
+  const repId = DB.deptReps ? DB.deptReps[req.dept] : null;
+  const rep = repId && DB.users ? DB.users.find(u=>u.id===repId) : null;
   const repEmail = rep ? rep.email : '';
+  
+  console.log('📧 Sending email:', {
+    to: req.email,
+    cc: repEmail,
+    dept: req.dept,
+    repId: repId,
+    repName: rep ? rep.name : 'לא נמצא'
+  });
   
   const subject = action==='approved'
     ? `✅ בקשת החופשה שלך אושרה — ${fmt(req.start)} עד ${fmt(req.end)}`
@@ -1226,7 +1234,14 @@ function renderReqTable(){
     const[si,sl,sc]=sm[r.status]||sm.pending;
     const rec=r.recommendation?rm[r.recommendation]:null;
     const recWithReason = rec ? `<span class="status-badge ${rec[2]}" ${r.recommendationReason?`title="סיבה: ${r.recommendationReason}" style="cursor:help;"`:''}>${rec[0]} ${rec[1]}${r.recommendationReason?' 💬':''}</span>` : '<span style="color:var(--text-light);font-size:12px">—</span>';
-    const acts=r.status==='pending'?`<button class="action-btn btn-approve" onclick="adminAction('${r.id}','approved')">✅ אשר</button><button class="action-btn btn-reject" onclick="adminAction('${r.id}','rejected')">❌ דחה</button><button class="action-btn" style="background:#fee;color:#c00;border:1px solid #fcc" onclick="adminDeleteRequest('${r.id}')">🗑️</button>`:`<button class="action-btn" style="background:#fee;color:#c00;border:1px solid #fcc" onclick="adminDeleteRequest('${r.id}')">🗑️ מחק</button>`;
+    
+    // Always show approve/reject/delete buttons, regardless of current status
+    const acts = `
+      <button class="action-btn btn-approve" onclick="adminAction('${r.id}','approved')" ${r.status==='approved'?'disabled style="opacity:0.5"':''}>✅</button>
+      <button class="action-btn btn-reject" onclick="adminAction('${r.id}','rejected')" ${r.status==='rejected'?'disabled style="opacity:0.5"':''}>❌</button>
+      <button class="action-btn" style="background:#fee;color:#c00;border:1px solid #fcc" onclick="adminDeleteRequest('${r.id}')">🗑️</button>
+    `;
+    
     return`<tr><td><strong>${r.name}</strong></td><td>${r.dept}</td><td style="font-size:13px">${fmt(r.start)}<br><span style="color:var(--text-light)">עד</span> ${fmt(r.end)}</td><td style="max-width:130px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.reason}</td><td>${recWithReason}</td><td><span class="status-badge ${sc}">${si} ${sl}</span></td><td style="font-size:12px">${formatDateTime(r.createdAt)}</td><td>${acts}</td></tr>`;
   }).join('');
 }
