@@ -1977,26 +1977,25 @@ function initCanvas() {
     currentUser = null;
     switchScreen('screen-register','screen-app');
     setTimeout(()=>enterApp(true, false),100);
-    return; // Don't check for regular user if admin
-  }
-  
-  // Check for remembered user and auto-login
-  const remembered = localStorage.getItem('rememberedUser');
-  if(remembered){
-    try{
-      const user = JSON.parse(remembered);
-      // Verify user still exists in database
-      const dbUser = DB.users.find(u=>u.id===user.id);
-      if(dbUser){
-        currentUser = dbUser;
-        switchScreen('screen-register','screen-app');
-        setTimeout(()=>enterApp(),100);
-      } else {
-        // User deleted, clear localStorage
+  } else {
+    // Check for remembered user and auto-login
+    const remembered = localStorage.getItem('rememberedUser');
+    if(remembered){
+      try{
+        const user = JSON.parse(remembered);
+        // Verify user still exists in database
+        const dbUser = DB.users.find(u=>u.id===user.id);
+        if(dbUser){
+          currentUser = dbUser;
+          switchScreen('screen-register','screen-app');
+          setTimeout(()=>enterApp(),100);
+        } else {
+          // User deleted, clear localStorage
+          localStorage.removeItem('rememberedUser');
+        }
+      } catch(e){
         localStorage.removeItem('rememberedUser');
       }
-    } catch(e){
-      localStorage.removeItem('rememberedUser');
     }
   }
 })();
