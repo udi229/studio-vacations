@@ -611,28 +611,20 @@ const DH=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
 const DEPTS=['סאונד','ניתוב','במאים','ע.במאי',"סיג'י/פרומפטר",'צלמים','מנהלי במה','כללי'];
 const DI={'סאונד':'🎵','ניתוב':'📡','במאים':'🎭','ע.במאי':'🎬',"סיג'י/פרומפטר":'💻','צלמים':'📷','מנהלי במה':'🎪','כללי':'⚙️'};
 
-function sendDecisionEmail(req, action) {
-  // Build recommendation section if exists - show only name and reason
+function sendDecisionEmail(req, action, repEmail) {
+  // Build recommendation section for email body - show rep name and reason
   let recSection = '';
   if(req.recommendedBy && req.recommendationReason) {
-    recSection = `\n\n${req.recommendedBy}:\n${req.recommendationReason}`;
+    recSection = `\n\nהמלצת ${req.recommendedBy}:\n${req.recommendationReason}`;
   }
   
   // Build CC list: department rep + Efrat
   let ccEmails = [];
   
-  // 1. Find department representative email
-  try {
-    if(DB && DB.deptReps && DB.users) {
-      const repId = DB.deptReps[req.dept];
-      if(repId) {
-        const rep = DB.users.find(u => u.id === repId);
-        if(rep && rep.email) {
-          ccEmails.push(rep.email);
-        }
-      }
-    }
-  } catch(e) {}
+  // 1. Add department representative email (passed as parameter)
+  if(repEmail) {
+    ccEmails.push(repEmail);
+  }
   
   // 2. Add Efrat's email - always included in all decision emails
   const efratEmail = 'efratn@kan.org.il';
@@ -1274,7 +1266,16 @@ async function adminAction(reqId,action){
   DB.notifications.push({id:Date.now().toString()+'a',requestId:reqId,type:action==='approved'?'request_approved':'request_rejected',text:`${action==='approved'?'✅ בקשתך אושרה':'❌ בקשתך נדחתה'} — ${fmt(req.start)} עד ${fmt(req.end)}`,for:[req.userId],read:[],createdAt:new Date().toISOString()});
   await saveDB();
   showToast(action==='approved'?'✅ הבקשה אושרה!':'❌ הבקשה נדחתה!',action==='approved'?'success':'error');
-  setTimeout(()=>sendDecisionEmail(req,action),350);
+  
+  // Prepare email data - get department rep email NOW before any async changes
+  let repEmail = '';
+  const repId = DB.deptReps[req.dept];
+  if(repId) {
+    const rep = DB.users.find(u => u.id === repId);
+    if(rep && rep.email) repEmail = rep.email;
+  }
+  
+  setTimeout(()=>sendDecisionEmail(req, action, repEmail), 350);
   renderAdminTab();
 }
 
