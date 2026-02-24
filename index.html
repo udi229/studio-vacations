@@ -621,7 +621,7 @@ function sendDecisionEmail(req, action) {
   // Build CC list: department rep + Efrat
   let ccEmails = [];
   
-  // Find department representative email
+  // 1. Find department representative email
   try {
     if(DB && DB.deptReps && DB.users) {
       const repId = DB.deptReps[req.dept];
@@ -632,23 +632,12 @@ function sendDecisionEmail(req, action) {
         }
       }
     }
-  } catch(e) {
-    console.error('Error finding rep email:', e);
-  }
+  } catch(e) {}
   
-  // Always add Efrat to CC
-  try {
-    if(DB && DB.users) {
-      const efrat = DB.users.find(u => u.name && u.name.includes('אפרת'));
-      if(efrat && efrat.email) {
-        // Add only if not already in list
-        if(!ccEmails.includes(efrat.email)) {
-          ccEmails.push(efrat.email);
-        }
-      }
-    }
-  } catch(e) {
-    console.error('Error finding Efrat email:', e);
+  // 2. Add Efrat's email - always included in all decision emails
+  const efratEmail = 'efratn@kan.org.il';
+  if(efratEmail && !ccEmails.includes(efratEmail)) {
+    ccEmails.push(efratEmail);
   }
   
   const subject = action==='approved'
@@ -658,12 +647,14 @@ function sendDecisionEmail(req, action) {
     ? `שלום ${req.name},\n\nשמחים לעדכן אותך כי בקשת החופשה שלך אושרה.\n\nפרטי הבקשה:\n• מחלקה: ${req.dept}\n• תאריך התחלה: ${fmt(req.start)}\n• תאריך סיום: ${fmt(req.end)}\n• סיבה: ${req.reason}${recSection}\n\nחופשה נעימה!\nצוות האולפן 🎬`
     : `שלום ${req.name},\n\nלצערנו, בקשת החופשה שלך נדחתה.\n\nפרטי הבקשה:\n• מחלקה: ${req.dept}\n• תאריך התחלה: ${fmt(req.start)}\n• תאריך סיום: ${fmt(req.end)}\n• סיבה: ${req.reason}${recSection}\n\nלשאלות ופניות — פנה/י למנהל הישיר.\nצוות האולפן 🎬`;
   
-  // Build Outlook URL with CC
+  // Build Outlook URL with TO and CC
   let outlookUrl = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(req.email)}`;
+  
+  // Add CC if we have any emails
   if(ccEmails.length > 0) {
-    // Join multiple CC emails with semicolon
     outlookUrl += `&cc=${encodeURIComponent(ccEmails.join(';'))}`;
   }
+  
   outlookUrl += `&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   
   window.open(outlookUrl, '_blank');
