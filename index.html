@@ -612,6 +612,12 @@ const DEPTS=['סאונד','ניתוב','במאים','ע.במאי',"סיג'י/פ�
 const DI={'סאונד':'🎵','ניתוב':'📡','במאים':'🎭','ע.במאי':'🎬',"סיג'י/פרומפטר":'💻','צלמים':'📷','מנהלי במה':'🎪','כללי':'⚙️'};
 
 function sendDecisionEmail(req, action, ccEmails) {
+  console.log('📧 sendDecisionEmail called with:', {
+    to: req.email,
+    cc: ccEmails,
+    action: action
+  });
+  
   // Build recommendation section for email body
   let recSection = '';
   if(req.recommendedBy && req.recommendationReason) {
@@ -633,12 +639,16 @@ function sendDecisionEmail(req, action, ccEmails) {
   // Build Outlook URL
   let outlookUrl = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(req.email)}`;
   
-  // Add CC emails (department rep + submitter + efrat)
+  // Add CC emails (department rep + efrat)
   if(ccEmails && ccEmails.length > 0) {
-    outlookUrl += `&cc=${encodeURIComponent(ccEmails.join(';'))}`;
+    const ccString = ccEmails.join(';');
+    console.log('📧 CC string:', ccString);
+    outlookUrl += `&cc=${encodeURIComponent(ccString)}`;
   }
   
   outlookUrl += `&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  
+  console.log('📧 Final URL:', outlookUrl);
   
   window.open(outlookUrl, '_blank');
 }
@@ -1258,24 +1268,28 @@ async function adminAction(reqId,action){
   await saveDB();
   showToast(action==='approved'?'✅ הבקשה אושרה!':'❌ הבקשה נדחתה!',action==='approved'?'success':'error');
   
-  // Collect ALL emails NOW
+  // Collect ALL CC emails NOW (before setTimeout)
   let allCCEmails = [];
   
-  // 1. Department rep email
-  const repId = DB.deptReps[req.dept];
-  if(repId) {
-    const rep = DB.users.find(u => u.id === repId);
-    if(rep && rep.email) allCCEmails.push(rep.email);
+  // 1. Department rep email - find the user by repId
+  const repId = DB.deptReps ? DB.deptReps[req.dept] : null;
+  if(repId && DB.users) {
+    const repUser = DB.users.find(u => u.id === repId);
+    if(repUser && repUser.email) {
+      allCCEmails.push(repUser.email);
+      console.log('נציג מחלקה:', repUser.name, repUser.email);
+    } else {
+      console.log('לא נמצא נציג למחלקה:', req.dept);
+    }
   }
   
-  // 2. Request submitter email (the person who submitted the request)
-  if(req.email) allCCEmails.push(req.email);
-  
-  // 3. Efrat's email - always
+  // 2. Efrat's email - always
   allCCEmails.push('efratn@kan.org.il');
   
-  // Remove duplicates
-  allCCEmails = [...new Set(allCCEmails)];
+  // Remove duplicates and filter out empty
+  allCCEmails = [...new Set(allCCEmails)].filter(e => e);
+  
+  console.log('📧 כל המיילים ב-CC:', allCCEmails);
   
   setTimeout(()=>sendDecisionEmail(req, action, allCCEmails), 350);
   renderAdminTab();
