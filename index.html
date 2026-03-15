@@ -171,12 +171,12 @@
   .section-header h2 { font-size:21px; font-weight:900; color:var(--dark); }
   .section-header .divider { flex:1; height:2px; background:var(--border); border-radius:1px; }
 
-  .my-request-item { background:white; border-radius:12px; padding:14px 16px; margin-bottom:9px; border:1px solid var(--border); display:flex; align-items:center; gap:12px; box-shadow:0 2px 6px rgba(255,107,0,0.05); transition:all .2s; }
+  .my-request-item { background:white; border-radius:12px; padding:14px 16px; margin-bottom:9px; border:1px solid var(--border); display:flex; align-items:flex-start; gap:12px; box-shadow:0 2px 6px rgba(255,107,0,0.05); transition:all .2s; flex-wrap:wrap; }
   .my-request-item:hover { box-shadow:var(--shadow); }
   .req-date-box { background:var(--orange-pale); border-radius:8px; padding:8px 11px; text-align:center; min-width:50px; flex-shrink:0; }
   .req-date-day { font-size:21px; font-weight:900; color:var(--orange); }
   .req-date-mon { font-size:12px; font-weight:700; color:var(--orange-light); }
-  .req-info { flex:1; }
+  .req-info { flex:1; min-width:200px; overflow-wrap:break-word; }
   .req-info h4 { font-size:15px; font-weight:700; color:var(--dark); word-wrap:break-word; white-space:normal; }
   .req-info p { font-size:13px; color:var(--text-light); margin-top:2px; }
 
@@ -900,7 +900,48 @@ async function submitRequest(){
   const reason=document.getElementById('req-reason').value.trim();
   if(!start||!end||!reason){showToast('אנא מלא את כל השדות','error');return;}
   if(end<start){showToast('תאריך הסיום חייב להיות אחרי ההתחלה','error');return;}
+  
   await loadShared();
+  
+  // Check for conflicts with other requests in same department
+  const conflicts = DB.requests.filter(r => {
+    // Same department, not rejected, not the current user
+    if(r.dept !== currentUser.dept) return false;
+    if(r.status === 'rejected') return false;
+    if(r.userId === currentUser.id) return false;
+    
+    // Check date overlap
+    const reqStart = new Date(r.start);
+    const reqEnd = new Date(r.end);
+    const newStart = new Date(start);
+    const newEnd = new Date(end);
+    
+    // Overlap exists if: new request starts before other ends AND new request ends after other starts
+    return newStart <= reqEnd && newEnd >= reqStart;
+  });
+  
+  // If conflicts found, warn user
+  if(conflicts.length > 0) {
+    const conflictNames = conflicts.map(c => {
+      const overlapStart = new Date(Math.max(new Date(c.start), new Date(start)));
+      const overlapEnd = new Date(Math.min(new Date(c.end), new Date(end)));
+      return `${c.name} (${fmt(overlapStart.toISOString().split('T')[0])} - ${fmt(overlapEnd.toISOString().split('T')[0])})`;
+    }).join('\n');
+    
+    const continueSubmit = confirm(
+      `⚠️ שים לב!\n\n` +
+      `קיימת חפיפה עם עובדים אחרים במחלקה שלך:\n\n${conflictNames}\n\n` +
+      `זה עלול להקשות על אישור החופשה.\n\n` +
+      `האם בכל זאת תרצה להגיש את הבקשה?`
+    );
+    
+    if(!continueSubmit) {
+      showToast('הבקשה בוטלה','');
+      return;
+    }
+  }
+  
+  // Continue with submission
   const req={id:Date.now().toString(),userId:currentUser.id,name:currentUser.name,dept:currentUser.dept,email:currentUser.email,start,end,reason,status:'pending',recommendation:null,createdAt:new Date().toISOString()};
   DB.requests.push(req);
   const repId=DB.deptReps[currentUser.dept];
@@ -1003,7 +1044,9 @@ async function cancelRequest(reqId){
   DB.notifications=DB.notifications.filter(n=>n.requestId!==reqId);
   await saveDB();
   showToast('הבקשה בוטלה','success');
-  renderMyRequests();checkNotifications();
+  renderMyRequests();
+  renderDeptCalendar(); // Refresh calendar to remove deleted request
+  checkNotifications();
 }
 
 // Rep tab
@@ -1260,7 +1303,11 @@ async function adminDeleteRequest(reqId){
   DB.notifications=DB.notifications.filter(n=>n.requestId!==reqId);
   await saveDB();
   showToast('הבקשה נמחקה','success');
+  // Refresh all calendars and views
   renderAdminTab();
+  renderDeptCalendar();
+  renderViewerCalendar();
+  renderMyRequests();
 }
 
 async function adminAction(reqId,action){
