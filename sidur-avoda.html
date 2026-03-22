@@ -1248,8 +1248,8 @@ function canEdit(dId){
   if(isMgr) return editMode;
   const role=currentEmp?.role||'employee';
   if(role==='manager') return editMode;
-  // team_lead: always can edit own dept in current/future weeks
-  if(role==='team_lead'&&currentEmp.department_id===dId&&weekOffset>=0) return true;
+  // team_lead: can edit own dept in current/future weeks when editMode
+  if(role==='team_lead'&&currentEmp.department_id===dId&&weekOffset>=0) return editMode;
   return false;
 }
 
@@ -1442,7 +1442,11 @@ function renderSchedule(){
     </div>`:''}
     <div class="sched-hdr" style="background:${dept.color};text-align:center;position:relative;z-index:1">
       <span class="sched-hdr-title" style="font-size:17px">${getDeptIcon(dept.name)} ${dept.name} — ${document.getElementById('wk-lbl').textContent} ${getDeptIcon(dept.name)}</span>
-      ${ed&&!editMode?'<span class="edit-badge" style="position:absolute;left:12px;top:50%;transform:translateY(-50%)">✏️ מצב עריכה</span>':''}
+      ${(currentEmp?.role==='team_lead'&&!isMgr&&currentEmp?.department_id===dept.id) ?
+        (editMode ?
+          `<button onclick="cancelEdit()" style="background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✕ סיום עריכה</button>` :
+          `<button onclick="startEdit()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ עריכה</button>`)
+        : ''}
       ${(isMgr||currentEmp?.role==='manager') ?
         (editMode ?
           `<button onclick="endEdit()" style="background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✕ סיום עריכה</button>` :
